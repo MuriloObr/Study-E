@@ -4,7 +4,7 @@
 from back.src.database.config import DATABASE_URL
 
 # Sqlalchemy Imports
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey, Binary
+from sqlalchemy import create_engine, ForeignKey
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 

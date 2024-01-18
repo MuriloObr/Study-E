@@ -1,32 +1,34 @@
-from utils.imports import Column, Integer, String, ForeignKey, relationship, declarative_base
-from sqlalchemy import Binary
+from typing import ByteString, List
+from ..utils.imports import ForeignKey, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    ...
 
 class User(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    username = Column(String)
-    email = Column(String)
-    password_hash = Column(Binary)
-    published_questions = relationship('Questions', back_populates='author')
-    published_answers = relationship('Answers', back_populates='author')
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[str] = mapped_column(nullable=False)
+    password_hash: Mapped[ByteString] = mapped_column(nullable=False)
+    published_questions: Mapped[List["Question"]] = relationship(back_populates='author')
+    published_answers: Mapped[List["Answer"]] = relationship(back_populates='author')
 
-class Questions(Base):
+class Question(Base):
     __tablename__ = 'questions'
-    id = Column(Integer, primary_key=True)
-    content = Column(String)
-    title = Column(String)
-    author_id = ForeignKey('users.id')
-    author = relationship('User', back_populates='published_questions')
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content: Mapped[str] = mapped_column(nullable=False)
+    title: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
+    author: Mapped["User"] = relationship(back_populates='published_questions')
 
-class Answers(Base):
+class Answer(Base):
     __tablename__ = 'answers'
-    id = Column(Integer, primary_key=True)
-    content = Column(String)
-    author_id = ForeignKey('users.id')
-    author = relationship('User', back_populates='published_answers')
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
+    author: Mapped["User"] = relationship(back_populates='published_answers')
 
 class Classes(Base):
     __tablename__ = 'classes'
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
