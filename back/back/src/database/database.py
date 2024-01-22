@@ -1,4 +1,4 @@
-from utils.imports import create_engine, sessionmaker, DATABASE_URL
+from ..utils.imports import create_engine, sessionmaker, DATABASE_URL
 from sqlalchemy.sql import exists
 from sqlalchemy.exc import NoResultFound
 from back.src.database.models import *
@@ -37,7 +37,7 @@ def create_user(name: str, email: str, password: str) -> str:
             db.commit()
             return 'User registered succesfully'
 
-def verify_credentials_with_email(email, password) -> Column[int] | None:
+def verify_credentials_with_email(email, password):
     """Função para verificar se o email e a senha estão corretos na tentativa de login do usuário"""
     with get_db() as db:
         try:
@@ -48,7 +48,7 @@ def verify_credentials_with_email(email, password) -> Column[int] | None:
         except NoResultFound:
             return None
 
-def verify_credentials_with_username(username, password) -> Column[int] | None:
+def verify_credentials_with_username(username, password):
     """Função para verificar se o username e a senha estão corretos na tentativa de login do usuário"""
     with get_db() as db:
         try:

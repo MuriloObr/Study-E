@@ -1,7 +1,8 @@
-from utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse
-from database.database import *
-from database.config import REDIS_PASSWORD, REDIS_URL
-from utils.generate_id import gen_random_id
+import uvicorn
+from ..utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse
+from ..database.database import *
+from ..database.config import REDIS_PASSWORD, REDIS_URL
+from ..utils.generate_id import gen_random_id
 import redis
 
 app = FastAPI()
@@ -46,3 +47,8 @@ def is_authenticated(session_id: str = Cookie(...)):
     """Função para verificar se o usuário está autenticado."""
     user_id = redis_client.get(session_id)
     return user_id is not None
+
+
+def start():
+    """Launched with `poetry run start` at root level"""
+    uvicorn.run("back.src.api:app", host="0.0.0.0", port=8000, reload=True)
