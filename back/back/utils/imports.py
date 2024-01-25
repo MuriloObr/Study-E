@@ -1,8 +1,4 @@
 # Common imports
-
-# Config
-from back.src.database.config import DATABASE_URL
-
 # Sqlalchemy Imports
 from sqlalchemy import create_engine, ForeignKey
 from sqlalchemy.engine import URL

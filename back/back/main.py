@@ -1,15 +1,20 @@
 import uvicorn
-from ..utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse
-from ..database.database import *
-from ..database.config import REDIS_PASSWORD, REDIS_URL
-from ..utils.generate_id import gen_random_id
 import redis
+from .utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse
+from .database.crud_database import *
+from .utils.generate_id import gen_random_id
+from back.utils.get_env import REDIS_URL, REDIS_PASSWORD
+
 
 app = FastAPI()
 redis_client = redis.Redis(
     host=REDIS_URL,
     port=11403,
     password=REDIS_PASSWORD)
+
+@app.get('/hello')
+def hello():
+    return { 'message': 'Hello World' }
 
 @app.post('/register')
 async def register(username: str = Body(...), 
@@ -20,12 +25,12 @@ async def register(username: str = Body(...),
     
 @app.post('/login')
 async def login(username: str|None = Body(None),
-                email: str|None = Body(None), 
+                email: str|None = Body(None),
                 password: str = Body(...)):
     if email is not None:
-        response: None|Column[int] = verify_credentials_with_email(email, password)
+        response = verify_credentials_with_email(email, password)
     else:
-        response: None|Column[int] = verify_credentials_with_username(username, password)
+        response = verify_credentials_with_username(username, password)
     
     if response is not None:
         user_id_bytes = str(response).encode('utf-8')  # Converte o valor em bytes
@@ -50,5 +55,5 @@ def is_authenticated(session_id: str = Cookie(...)):
 
 
 def start():
-    """Launched with `poetry run start` at root level"""
-    uvicorn.run("back.src.api:app", host="0.0.0.0", port=8000, reload=True)
+    """Launched with `poetry run dev` at root level"""
+    uvicorn.run("back.main:app", host="0.0.0.0", port=8000, reload=True)
