@@ -1,9 +1,10 @@
-from ..utils.imports import create_engine, sessionmaker, DATABASE_URL
+from ..utils.imports import create_engine, sessionmaker
 from sqlalchemy.sql import exists
 from sqlalchemy.exc import NoResultFound
-from back.src.database.models import *
+from back.database.models import *
 from contextlib import contextmanager
 from passlib.hash import bcrypt
+from back.utils.get_env import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 LocalSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
