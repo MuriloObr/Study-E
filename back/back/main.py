@@ -1,6 +1,6 @@
 import uvicorn
 import redis
-from .utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse
+from .utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse, Depends
 from .database.crud_database import *
 from .utils.generate_id import gen_random_id
 from back.utils.get_env import REDIS_URL, REDIS_PASSWORD
@@ -8,9 +8,21 @@ from back.utils.get_env import REDIS_URL, REDIS_PASSWORD
 
 app = FastAPI()
 redis_client = redis.Redis(
-    host=REDIS_URL,
+    host=REDIS_URL,  # type: ignore
     port=11403,
     password=REDIS_PASSWORD)
+
+def get_session(session_id: str = Cookie(...)) -> int|None:
+    """
+    Função para verificar se o usuário está autenticado.
+
+    return: bool
+    """
+    user_id = redis_client.get(session_id)
+    if user_id:
+        return int(str(user_id))
+    else:
+        return None
 
 @app.get('/hello')
 def hello():
@@ -36,7 +48,7 @@ async def login(username: str|None = Body(None),
         user_id_bytes = str(response).encode('utf-8')  # Converte o valor em bytes
         session_id = str(gen_random_id())  # Generate a random id
         redis_client.set(session_id, user_id_bytes)  # Adiciona a session e o user id ao redis
-        redis_client.expire(session_id, 3600)  # Adiciona um tempo para expirar a session (1 hora)
+        redis_client.expire(session_id, 7200)  # Adiciona um tempo para expirar a session (2 hora)
 
         # Se optarmos por configurar as rotas no FASTAPI, podemos redirecionar o usuário para outra página logo após o login.
         #redirect = RedirectResponse(url='/home', status_code=302)
@@ -48,11 +60,23 @@ async def login(username: str|None = Body(None),
         r.set_cookie(key=session_id, value=user_id_string)
         return r
 
-def is_authenticated(session_id: str = Cookie(...)):
-    """Função para verificar se o usuário está autenticado."""
-    user_id = redis_client.get(session_id)
-    return user_id is not None
+@app.post('/create_question')
+def create_question_route(title:str = Body(...), content:str = Body(...), author_id = Depends(get_session)):
+    if author_id is None:
+        return 'User not authenticated'
+    create_question(title, content, author_id)
 
+@app.post('/delete_question')
+def delete_data(question_id: str = Body(...), author_id: int = Depends(get_session)):   
+    """
+    Função para deletar uma questão que foi publicada.
+    Irá verificar se o usuário está autenticado e irá chamar a função que executa a exclusão dentro da database.
+    """
+    if author_id is None:
+        return 'User not authenticated'
+    # Vai retornar 
+    response = delete_question(question_id, author_id)
+    return response
 
 def start():
     """Launched with `poetry run dev` at root level"""

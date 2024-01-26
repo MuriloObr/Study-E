@@ -1,5 +1,4 @@
-from typing import List
-from ..utils.imports import ForeignKey, relationship
+from ..utils.imports import ForeignKey, relationship, List
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
@@ -21,13 +20,16 @@ class Question(Base):
     title: Mapped[str] = mapped_column(nullable=False)
     author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
     author: Mapped["User"] = relationship(back_populates='published_questions')
+    answers: Mapped[List["Answer"]] = relationship("Answer", back_populates='question')
 
 class Answer(Base):
     __tablename__ = 'answers'
     id: Mapped[int] = mapped_column(primary_key=True)
     content: Mapped[str] = mapped_column(nullable=False)
-    author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
+    author_id: Mapped[int] = mapped_column(ForeignKey('users.id'),nullable=False)
     author: Mapped["User"] = relationship(back_populates='published_answers')
+    question_id: Mapped[int] = mapped_column(ForeignKey('questions.id'), nullable=False)
+    question: Mapped["Question"] = relationship(back_populates='answers')
 
 class Subject(Base):
     __tablename__ = 'subjects'

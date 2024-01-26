@@ -2,7 +2,7 @@
 # Sqlalchemy Imports
 from sqlalchemy import create_engine, ForeignKey
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker, MappedColumn
 
 # Fastapi imports
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
