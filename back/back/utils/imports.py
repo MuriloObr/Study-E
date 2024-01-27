@@ -11,4 +11,4 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi import Request, Body, Cookie
 
 # Typing
-from typing import Dict, List, Literal, Optional, Any, overload, Type
+from typing import Dict, List, Literal, Optional, Any, overload, Type, Callable

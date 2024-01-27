@@ -63,8 +63,9 @@ async def login(username: str|None = Body(None),
 @app.post('/create_question')
 def create_question_route(title:str = Body(...), content:str = Body(...), author_id = Depends(get_session)):
     if author_id is None:
-        return 'User not authenticated'
-    create_question(title, content, author_id)
+        return {'message':'User not authenticated'}
+    response = create_question(title, content, author_id)
+    return {'message': response}
 
 @app.post('/delete_question')
 def delete_data(question_id: str = Body(...), author_id: int = Depends(get_session)):   
@@ -76,7 +77,7 @@ def delete_data(question_id: str = Body(...), author_id: int = Depends(get_sessi
         return 'User not authenticated'
     # Vai retornar 
     response = delete_question(question_id, author_id)
-    return response
+    return {'message': response}
 
 def start():
     """Launched with `poetry run dev` at root level"""
