@@ -19,7 +19,8 @@ class Question(Base):
     content: Mapped[str] = mapped_column(nullable=False)
     title: Mapped[str] = mapped_column(nullable=False)
     author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
-    author: Mapped["User"] = relationship(back_populates='published_questions')
+
+    author: Mapped["User"] = relationship("User", back_populates='published_questions')
     answers: Mapped[List["Answer"]] = relationship("Answer", back_populates='question')
 
 class Answer(Base):

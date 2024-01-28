@@ -1,6 +1,6 @@
 from .models import User, Answer, Question, Subject
-from ..utils.imports import create_engine, sessionmaker, HTTPException, status, Any, Callable, Dict
-from sqlalchemy.exc import NoResultFound
+from ..utils.imports import create_engine, sessionmaker, Any, Dict, HTTPException, JSONResponse
+from sqlalchemy.exc import NoResultFound, SQLAlchemyError
 from back.database.models import *
 from contextlib import contextmanager
 from passlib.hash import bcrypt
@@ -17,117 +17,126 @@ def get_db():
         yield db
     finally:
         db.close()
+def quick_query(obj: Any, filter_dict: Dict[str, Any]) -> Any|None:
+    "Função para realizar consultas rapidas na database"
+    with get_db() as _db:
+        query = _db.query(obj).filter_by(**filter_dict).first()
+        return query
 
-def easy_db(func):
+def create_user(username: str, email: str, password: str):
     """
-    Decorator para facilitar algumas operações repetitivas na database.
-
-    Args: 
-        filter_dict (Dict): Dicionário contendo os critérios de filtragem. A key deve ser o nome da coluna e a chave deve ser o valor a ser buscado no filtro para essa coluna.
+    Função para criar um novo usuário na database.
+    
+    Returns:
+        Retorna um JSONResponse com o código 200 e uma mensagem indicando que a operação foi bem sucedida.
     """
-    def wrapper(*args, **kwargs):
-        with get_db() as _db:
-            def quick_query(obj: Any, filter_dict: Dict[str, Any]):
-                query = _db.query(obj).filter_by(**filter_dict).first()
-                if query is not None:
-                    return query
-                else:
-                    return None
-            try:
-                kwargs['db'] = _db
-                kwargs['quick_query'] = quick_query
-            except:
-                pass
+    with get_db() as db:
+        # Verifica se o usuário já existe no banco de dados
+        if quick_query(User, {'username':username}) is not None:
+            raise HTTPException(status_code=400, detail='User already exists.')
 
-            result = func(*args, **kwargs)
-            # Tenta confirmar as alterações na database
-            try:
-                _db.commit()
-            # Se não for possível, volta as alterações.
-            except Exception as e:
-                print(f"Erro ao commitar: {str(e)}")
-                _db.rollback()
-        return result
-    return wrapper
+        elif quick_query(User, {'email': email}) is not None:
+            raise HTTPException(status_code=400, detail='E-mail already exists.')
 
-@easy_db
-def create_user(db, quick_query, username: str, email: str, password: str) -> str:
-    """Função para criar um novo usuário na database."""
-    # Verifica se o usuário já existe no banco de dados
-    if quick_query(User, {'username':username}) is not None:
-        return 'User already exists'
+        # Se o usuário não existir, cria e adiciona ao banco de dados
+        else:
+            # Cria uma hash, para salvar a senha de forma segura.
+            password_hash = bcrypt.hash(password).encode('utf-8')
+            new_user = User(username=username, email=email, password_hash=password_hash)
+            db.add(new_user)
+            return JSONResponse(content={'message': f'User created successfully.'}, status_code=200)
 
-    elif quick_query(User, {'email': email}) is not None:
-        return 'E-mail already exists'
+def verify_credentials(password, email=None, username=None):
+    """
+    Função para verificar se o email e a senha estão corretos na tentativa de login do usuário
 
-    # Se o usuário não existir, cria e adiciona ao banco de dados
-    else:
-        # Cria uma hash, para salvar a senha de forma segura.
-        password_hash = bcrypt.hash(password).encode('utf-8')
-        new_user = User(username=username, email=email, password_hash=password_hash)
-        db.add(new_user)
-        return 'User registered succesfully'
-
-@easy_db
-def verify_credentials_with_email(quick_query, email, password) -> str|int|None:
-    """Função para verificar se o email e a senha estão corretos na tentativa de login do usuário"""
+    Returns:
+        Retorna um JSONResponse com o código 200 e o id do usuário.
+    """
     try:
-        user = quick_query(User, {'email':email})
+        col = 'email' if email is not None else 'username'
+        query = email if email is not None else username
+        user = quick_query(User, {col:query})
         if user is not None:
             if bcrypt.verify(password, user.password_hash):
                 return user.id
+            else:
+                raise HTTPException(status_code=401, detail='Invalid password.')
     except NoResultFound:
-        return "E-mail or password not found."
+        raise HTTPException(status_code=400, detail='E-mail not found.')
 
-@easy_db
-def verify_credentials_with_username(quick_query, username, password) -> str|int|None:
-    """Função para verificar se o username e a senha estão corretos na tentativa de login do usuário"""
-    try:
-        user = quick_query(User, {'username': username})
-        if user is not None:
-            if bcrypt.verify(password.encode('utf-8'), str(user.password_hash)):
-                return user.id
-    except NoResultFound:
-        return "Username or password not found."
+def create_question(title: str, content:str, author_id: int):
+    """
+    Função para criar uma nova pergunta na database.
 
-@easy_db
-def create_question(db, title: str, content:str, author_id: int):
-    """Metodo para criar uma nova pergunta na database."""
-    try:
-        new_question = Question(title=title, content=content, author_id=author_id)
-        db.add(new_question)
-        return new_question.id
-    except Exception as e:
-        return f'Um erro ocorreu ao tentar criar a questão: {str(e)}'
+    Returns:
+        Retorna um JSONResponse com o código 200 e o id da questão que foi criada.
+    """
+    with get_db() as db:
+        try:
+            title_exists = quick_query(Question, {'title': title})
+            if title_exists is not None:
+                raise HTTPException(status_code=400, detail='Title already exists.')
+            new_question = Question(title=title, content=content,author_id=author_id)
+            db.add(new_question)
+            db.commit()
+            return JSONResponse(content={'question_id': new_question.id}, status_code=200)
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f'Error creating question: {str(e)}.')
 
-@easy_db
-def delete_question(db, quick_query, question_id:Any, author_id:int):
-    """Função para realizar a exclusão na database."""
-    question = quick_query(Question, {'question_id':question_id})
-    if question is None:
-        return f'Question com id {question_id} não encontrado.',
-    # Verifica se o author id da question é o mesmo de quem está solicitando a exclusão.
-    if question.author_id != author_id:
-        return f'Você não tem permissão para deletar essa question.',
-    try:
-        db.delete(question)
-    except Exception as e:
-        return f'Um erro ocorreu ao tentar deletar a questão: {str(e)}.'
+def delete_question(question_id: int, author_id:int):
+    """
+    Função para realizar a exclusão de uma pergunta.
 
-@easy_db
-def add_answer_to_question(quick_query, question_id:str, content:str, author_id: int):
-    """Função para adicionar uma resposta a uma questão."""
+    Returns:
+        Retorna uma JSONResponse com código 200 e indicando que a operação foi bem sucedida.
+    """
+    with get_db() as db:
+        question = quick_query(Question, {'id': question_id})
+        if question is None:
+            raise HTTPException(status_code=404, detail=f'Question with id: {question_id} not found.')
+        # Verifica se o id do autor da pergunta é o mesmo de quem está solicitando a exclusão.
+        if question.author_id != author_id:
+            raise HTTPException(status_code=403, detail=f'You do not have permission to delete this question.')
+        try:
+            db.delete(question)
+            db.commit()
+            return JSONResponse(content={'message': f'Question with id: {str(question_id)} was successfully deleted.'}, status_code=200)
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f'Error deleting the question: {str(e)}')
+
+def add_answer_to_question(question_id:str, content:str, author_id: int):
+    """
+    Função para adicionar uma resposta a uma questão.
+
+    Returns:
+        Retorna um JSONResponse com o id da resposta que foi criada.
+    """
     question = quick_query(Question, {'id':question_id})
     if question is None:
-        return f'Questão com id: {question_id} não encontrada.'
+        raise HTTPException(status_code=404, detail=f'Question with id: {question_id} not found.')
     new_answer = Answer(content=content, author_id=author_id)
     question.answers.append(new_answer)
-    return f'Resposta adicionada com sucesso.\nAnswer id: {new_answer.id}'
+    return JSONResponse(content={'answer_id': new_answer.id}, status_code=200)
 
-@easy_db
-def delete_answer_from_question(db, quick_query, answer_id: str, author_id: int):
-    answer = quick_query(Answer, {'id':answer_id})
-    if answer.author_id == author_id:
-        db.delete(answer)
-    else:
-        return f'Você não tem autorização para excluir essa resposta.'
+def delete_answer_from_question(answer_id: str, author_id: int):
+    """
+    Função para deletar uma resposta.
+
+    Returns:
+        Retorna um JSONResponse com código 200 e uma mensagem indicando que a operação foi bem sucedida.
+    """
+    with get_db() as db:
+        answer = quick_query(Answer, {'id':answer_id})
+        if answer is not None:
+            if answer.author_id == author_id:
+                db.delete(answer)
+                db.commit()
+                return JSONResponse(content={'message': 'Answer successfully deleted.'}, status_code=200)
+            else:
+                raise HTTPException(status_code=403, detail=f'You do not have permission to delete this answer.')
+        else:
+            raise HTTPException(status_code=404, detail=f'Answer with id: {str(answer_id)} not found.')
+        
