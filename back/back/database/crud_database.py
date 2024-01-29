@@ -32,9 +32,8 @@ def create_user(username: str, email: str, password: str):
     """
     with get_db() as db:
         # Verifica se o usuário já existe no banco de dados
-        if quick_query(User, {'username':username}) is not None:
-            raise HTTPException(status_code=400, detail='User already exists.')
-
+        if quick_query(User, {'username': username}) is not None:
+            raise HTTPException(status_code=400, detail='Username already in use.')
         elif quick_query(User, {'email': email}) is not None:
             raise HTTPException(status_code=400, detail='E-mail already exists.')
 
@@ -44,6 +43,7 @@ def create_user(username: str, email: str, password: str):
             password_hash = bcrypt.hash(password).encode('utf-8')
             new_user = User(username=username, email=email, password_hash=password_hash)
             db.add(new_user)
+            db.commit()
             return JSONResponse(content={'message': f'User created successfully.'}, status_code=200)
 
 def verify_credentials(password, email=None, username=None):
@@ -78,8 +78,11 @@ def create_question(title: str, content:str, author_id: int):
             if title_exists is not None:
                 raise HTTPException(status_code=400, detail='Title already exists.')
             new_question = Question(title=title, content=content,author_id=author_id)
+            #empty_answer = Answer(content='', author_id=author_id)
+            #new_question.answers.append(empty_answer)
             db.add(new_question)
             db.commit()
+
             return JSONResponse(content={'question_id': new_question.id}, status_code=200)
         except SQLAlchemyError as e:
             db.rollback()
@@ -93,7 +96,7 @@ def delete_question(question_id: int, author_id:int):
         Retorna uma JSONResponse com código 200 e indicando que a operação foi bem sucedida.
     """
     with get_db() as db:
-        question = quick_query(Question, {'id': question_id})
+        question = db.get(Question, question_id)
         if question is None:
             raise HTTPException(status_code=404, detail=f'Question with id: {question_id} not found.')
         # Verifica se o id do autor da pergunta é o mesmo de quem está solicitando a exclusão.
@@ -107,21 +110,23 @@ def delete_question(question_id: int, author_id:int):
             db.rollback()
             raise HTTPException(status_code=500, detail=f'Error deleting the question: {str(e)}')
 
-def add_answer_to_question(question_id:str, content:str, author_id: int):
+def add_answer_to_question(question_id:int, content:str, author_id: int):
     """
     Função para adicionar uma resposta a uma questão.
 
     Returns:
         Retorna um JSONResponse com o id da resposta que foi criada.
     """
-    question = quick_query(Question, {'id':question_id})
-    if question is None:
-        raise HTTPException(status_code=404, detail=f'Question with id: {question_id} not found.')
-    new_answer = Answer(content=content, author_id=author_id)
-    question.answers.append(new_answer)
-    return JSONResponse(content={'answer_id': new_answer.id}, status_code=200)
+    with get_db() as db:
+        question = db.get(Question, question_id)
+        if question is None:
+            raise HTTPException(status_code=404, detail=f'Question with id: {question_id} not found.')
+        new_answer = Answer(content=content, author_id=author_id)
+        question.answers.append(new_answer)
+        db.commit()
+        return JSONResponse(content={'answer_id': new_answer.id}, status_code=200)
 
-def delete_answer_from_question(answer_id: str, author_id: int):
+def delete_answer_from_question(answer_id: int, author_id: int):
     """
     Função para deletar uma resposta.
 
@@ -129,7 +134,7 @@ def delete_answer_from_question(answer_id: str, author_id: int):
         Retorna um JSONResponse com código 200 e uma mensagem indicando que a operação foi bem sucedida.
     """
     with get_db() as db:
-        answer = quick_query(Answer, {'id':answer_id})
+        answer = db.get(Answer, answer_id)
         if answer is not None:
             if answer.author_id == author_id:
                 db.delete(answer)

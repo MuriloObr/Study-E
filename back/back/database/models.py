@@ -21,7 +21,7 @@ class Question(Base):
     author_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
 
     author: Mapped["User"] = relationship("User", back_populates='published_questions')
-    answers: Mapped[List["Answer"]] = relationship("Answer", back_populates='question')
+    answers: Mapped[List["Answer"]] = relationship("Answer", back_populates='question', cascade='all, delete-orphan')
 
 class Answer(Base):
     __tablename__ = 'answers'

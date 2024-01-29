@@ -1,8 +1,9 @@
 import uvicorn
 import redis
-from .utils.imports import FastAPI, Body, Cookie, Dict, JSONResponse, Depends, HTTPException, status
+from .utils.imports import FastAPI, Body, Cookie, JSONResponse, Depends, HTTPException, status
 from .database.crud_database import *
 from .utils.generate_id import gen_random_id
+from .typing import *
 from back.utils.get_env import REDIS_URL, REDIS_PASSWORD
 
 
@@ -41,13 +42,13 @@ def hello():
     return { 'message': 'Hello World' }
 
 @app.post('/register')
-async def register(username: str = Body(...), 
+async def register_route(username: str = Body(...), 
                    email: str = Body(...), 
                    password: str = Body(...)):
-    create_user(username=username, email=email, password=password) 
+    return create_user(username=username, email=email, password=password) 
     
 @app.post('/login')
-async def login(username: str|None = Body(None),
+async def login_route(username: str|None = Body(None),
                 email: str|None = Body(None),
                 password: str = Body(...)):
     if email is None and username is None:
@@ -70,20 +71,40 @@ async def login(username: str|None = Body(None),
         return r
 
 @app.post('/create_question')
-async def create_question_route(title:str = Body(...), content:str = Body(...), author_id: int = Depends(get_session)):
+async def create_question_route(question_obj: AddQuestion, author_id: int = Depends(get_session)):
     if author_id is None:
         return {'message': 'User not authenticated.'}
-    create_question(title, content, author_id)
+    return create_question(question_obj.title, 
+                           question_obj.content, 
+                           author_id)
 
 @app.post('/delete_question')
-async def delete_question_route(question_id: int = Body(...), author_id: int = Depends(get_session)):   
+async def delete_question_route(
+    question_obj: DeleteQuestion,
+    author_id: int = Depends(get_session)):   
     """
     Função para deletar uma questão que foi publicada.
     Irá verificar se o usuário está autenticado e irá chamar a função que executa a exclusão dentro da database.
     """
     if author_id is None:
         return {'message':'User not authenticated'}
-    delete_question(question_id, author_id)
+    return delete_question(question_obj.question_id, author_id)
+
+@app.post('/add_answer')
+async def add_answer_route(
+    answer_obj: AddAnswer,
+    author_id: int = Depends(get_session)):
+    if author_id is None:
+        return {'message':'User not authenticated'}
+    return add_answer_to_question(answer_obj.question_id, 
+                                  answer_obj.content, 
+                                  author_id)
+
+@app.post('/delete_answer')
+async def delete_answer_route(answer_obj: DeleteAnswer, author_id: int = Depends(get_session)):
+    if author_id is None:
+        return {'message':'User not authenticated'}
+    return delete_answer_from_question(answer_obj.answer_id, author_id)
 
 def start():
     """Launched with `poetry run dev` at root level"""
