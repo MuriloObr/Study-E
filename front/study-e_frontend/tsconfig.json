@@ -27,6 +27,6 @@
       ]
     }
   },
-  "include": ["src", "src/App.tsx", "src/main.tsx"],
+  "include": ["src", "src/routes/Root.tsx", "src/main.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
