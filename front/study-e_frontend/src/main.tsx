@@ -5,6 +5,7 @@ import { Root } from './routes/Root.tsx'
 import { ErrorPage } from './ErrorPage.tsx'
 import { LoginPage } from './routes/LoginPage.tsx'
 import '../app/globals.css'
+import { RegisterPage } from './routes/RegisterPage.tsx'
 
 const router = createBrowserRouter([
   {
@@ -15,6 +16,11 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />,
     errorElement: <ErrorPage />,
   },
 ])
