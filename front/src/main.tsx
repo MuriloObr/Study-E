@@ -1,18 +1,19 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import { Dashboard } from './routes/Dashboard.tsx'
-import { ErrorPage } from './ErrorPage.tsx'
-import { LoginPage } from './routes/LoginPage.tsx'
 import '../app/globals.css'
-import { RegisterPage } from './routes/RegisterPage.tsx'
 import { Root } from './routes/Root.tsx'
+import { ErrorPage } from './ErrorPage.tsx'
+import { Dashboard } from './routes/Dashboard.tsx'
+import { LoginPage } from './routes/LoginPage.tsx'
+import { RegisterPage } from './routes/RegisterPage.tsx'
+import { Questions } from './routes/Questions.tsx'
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Root />,
-    loader: () => ({ user_id: 1 }),
+    loader: () => ({ user_id: undefined }),
     errorElement: <ErrorPage />,
     children: [
       {
@@ -27,6 +28,10 @@ const router = createBrowserRouter([
         path: 'register',
         element: <RegisterPage />,
       },
+      {
+        path: 'questions',
+        element: <Questions />
+      }
     ],
   },
 ])
